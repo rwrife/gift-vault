@@ -81,14 +81,15 @@ Gift Vault is a personal record-keeping tool. It gives no financial advice; budg
 
 ## Current status
 
-Scaffold complete: documentation and issue backlog only. No Xcode project, builds, tests, device evidence, or TestFlight binary exists yet. See `PLAN.md` for milestones.
+**Native bootstrap landed (issue #1); product features remain planned.** The repository now contains a real SwiftUI iPhone app target, a shared `GiftVault` scheme, the pure Swift 6 `Packages/GiftVaultKit` package with contract tests, iPhone-only and zero-network CI gates, and pinned macOS CI that builds and launches the app in an iPhone simulator, alongside a Linux `swift test` job for the package. No people/ideas/occasions/ledger workflow, persistence, signed archive, or TestFlight build exists yet. See `docs/bootstrap-evidence.md` for what is host-verified versus CI-pending.
 
 - Bundle ID: `com.infinityball.giftvault` — App Store Connect registration: **CREATED** (verified this run).
 - iOS signing/TestFlight will use the repository Actions secrets (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, `ASC_TEAM_ID` — names only; values are never stored in this repository).
 
-## Development quickstart (planned)
+## Development quickstart
 
-- Xcode 26.0.1 (17A400) with iOS SDK 26.0, Swift 6 language mode (see `toolchain.json`).
+- Xcode 26.0.1 (17A400) with iOS SDK 26.0, Swift 6 language mode (see `toolchain.json`). A missing exact pin on Apple CI is an environment acceptance blocker, never a silent substitute.
 - SwiftUI app target + pure-Swift `GiftVaultKit` package (Linux-testable domain logic).
-- CI: Linux `swift test` for the package + macOS build/launch checks; iPhone-only enforcement (`TARGETED_DEVICE_FAMILY = 1` pre-build grep, post-build `UIDeviceFamily == [1]` check); zero-network gate.
-- iPhone-only: native iPad support is disabled by default and requires explicit user opt-in.
+- CI: Linux `swift test` for the package + macOS build/launch checks; iPhone-only enforcement (`TARGETED_DEVICE_FAMILY = 1` pre-build grep, post-build `UIDeviceFamily == [1]` check); zero-network gate (empty allowlist).
+- On a Mac, run `Scripts/ci.sh "$(git rev-parse HEAD)"` after `Scripts/select_xcode.py --toolchain toolchain.json` resolves the exact pinned Xcode. On Linux, `python3 -m unittest discover -s Scripts/tests -v` and `swift test --package-path Packages/GiftVaultKit` are runnable, but they are not a substitute for the macOS simulator validation.
+- iPhone-only: native iPad support is disabled by default and requires explicit user opt-in. Keep signing material out of git.
