@@ -17,7 +17,7 @@ public typealias BudgetMinorUnits = Int64
 /// The occasion-slot status vocabulary promised by the MVP plan.
 /// Enforcement of legal transitions is issue #2's domain state machine;
 /// this pipeline only pins the published order.
-public enum OccasionStatus: String, CaseIterable, Sendable {
+public enum OccasionStatus: String, CaseIterable, Sendable, Codable {
     case idea
     case chosen
     case bought
@@ -29,7 +29,7 @@ public enum OccasionStatus: String, CaseIterable, Sendable {
 }
 
 /// Ledger directions from the README given/received history feature.
-public enum LedgerDirection: String, CaseIterable, Sendable {
+public enum LedgerDirection: String, CaseIterable, Sendable, Codable {
     case given
     case received
 }
