@@ -82,7 +82,7 @@ public struct GiftVaultStore: Sendable {
         let directory = url.deletingLastPathComponent()
         let base = url.lastPathComponent
         for suffix in sidecarSuffixes {
-            let candidate = directory.appendingPathComponent(base + suffix)
+            var candidate = directory.appendingPathComponent(base + suffix)
             guard FileManager.default.fileExists(atPath: candidate.path) else { continue }
             var values = URLResourceValues()
             values.isExcludedFromBackup = true
