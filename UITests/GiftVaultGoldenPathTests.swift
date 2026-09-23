@@ -110,7 +110,16 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         let chooseButton = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH %@", "board.choose")
         ).firstMatch
-        XCTAssertTrue(chooseButton.waitForExistence(timeout: 10))
+        if !chooseButton.waitForExistence(timeout: 10) {
+            // One-shot diagnostic: dump the live hierarchy (identifiers,
+            // labels, frames) so the next fix is grounded in fact.
+            print("DX(board) board.count=\(app.descendants(matching: .cell).count)")
+            print("DX(board) buttons=\(app.buttons.allElementsBoundByIndex.map { "\($0.identifier)|\($0.label)" })")
+            print("DX(board) statics=\(app.staticTexts.allElementsBoundByIndex.map { $0.label })")
+            print("DX(tree)\n\(app.debugDescription)")
+            XCTFail("board choose button never appeared")
+            return
+        }
         chooseButton.tap()
         let daypackPick = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Trail daypack")
