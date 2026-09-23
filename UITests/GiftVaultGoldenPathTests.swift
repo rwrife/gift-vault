@@ -15,12 +15,23 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    /// Screen identifiers are attached to List/Group containers whose
+    /// XCUITest element type is not guaranteed to be `otherElements`, so
+    /// match them by identifier across every element type.
+    @MainActor
+    private func waitForScreen(_ app: XCUIApplication, _ id: String, timeout: TimeInterval = 10) {
+        let screen = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@", id))
+            .firstMatch
+        XCTAssertTrue(screen.waitForExistence(timeout: timeout), "screen \(id) not found")
+    }
+
     @MainActor
     func testGoldenPath() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]
         app.launch()
-        XCTAssertTrue(app.otherElements["screen.people"].waitForExistence(timeout: 10))
+        waitForScreen(app, "screen.people")
 
         // 1. Add person "Nova".
         let peopleTab = app.tabBars.buttons["People"]
@@ -41,7 +52,7 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         app.staticTexts.matching(
             NSPredicate(format: "label CONTAINS %@", "Nova")
         ).firstMatch.tap()
-        XCTAssertTrue(app.otherElements["screen.ideas"].waitForExistence(timeout: 10))
+        waitForScreen(app, "screen.ideas")
         app.buttons["ideas.add"].tap()
         XCTAssertTrue(app.buttons["idea.save"].waitForExistence(timeout: 10))
         app.textFields["idea.note"].tap()
@@ -84,7 +95,7 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         app.staticTexts.matching(
             NSPredicate(format: "label CONTAINS %@", "Nova quiz")
         ).firstMatch.tap()
-        XCTAssertTrue(app.otherElements["screen.board"].waitForExistence(timeout: 10))
+        waitForScreen(app, "screen.board")
         let chooseButton = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH %@", "board.choose")
         ).firstMatch
@@ -118,7 +129,7 @@ final class GiftVaultGoldenPathTests: XCTestCase {
 
         // 5. The given transition wrote the implied ledger row.
         app.tabBars.buttons["Ledger"].tap()
-        XCTAssertTrue(app.otherElements["screen.ledger"].waitForExistence(timeout: 10))
+        waitForScreen(app, "screen.ledger")
         XCTAssertTrue(
             app.staticTexts.matching(
                 NSPredicate(format: "label CONTAINS %@", "Given Nova")

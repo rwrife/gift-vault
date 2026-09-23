@@ -13,7 +13,10 @@ final class GiftVaultLaunchTests: XCTestCase {
 
         // People tab is the default landing screen (NavigationStack
         // identifier — the pattern proven by the bootstrap launch smoke).
-        XCTAssertTrue(app.otherElements["screen.people"].waitForExistence(timeout: 10))
+        let peopleScreen = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@", "screen.people"))
+            .firstMatch
+        XCTAssertTrue(peopleScreen.waitForExistence(timeout: 10))
         // The fixture vault seeds five people including Ava Chen.
         XCTAssertTrue(app.staticTexts["Ava Chen"].waitForExistence(timeout: 10))
     }
