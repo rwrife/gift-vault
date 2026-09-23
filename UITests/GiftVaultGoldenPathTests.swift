@@ -5,26 +5,28 @@ import XCTest
 /// the fixture vault (`-ui-testing`), which never contains "Nova" or
 /// "Trail daypack".
 ///
-/// Query grammar (grounded in the CI AX-hierarchy dump, run 35910710111):
-/// - SwiftUI List content MERGES cell controls into synthesized cell
-///   elements whose accessibilityIdentifier is dropped; only the merged
-///   LABEL survives. In-list controls are therefore matched by label.
-/// - Toolbar items, sheet fields, and sheet buttons keep their own
-///   accessibilityIdentifiers — match those by identifier.
-/// - Every step waits for `waitForHittable` (not `exists`), so content
-///   retained behind sheets/tabs/hidden stacks can never satisfy an
-///   assertion or steal a tap.
-/// - Navigation never happens by positional cell taps (a tap during a
-///   push transition can land on the incoming screen); rows are tapped
-///   by their visible label.
+/// Query grammar (CI run 35910710111: the new occasion's board rendered
+/// ZERO slot rows — the attached toggle state never reached the model):
+/// every step waits for HITTABLE state (not mere existence), the attach
+/// toggle's value is printed after tapping, and any failed wait dumps
+/// the live accessibility tree so the next fix is grounded in fact.
+/// In-list controls merge their label content into one element, so they
+/// are matched by merged label; toolbar/sheet controls keep their own
+/// accessibilityIdentifiers. Navigation happens by visible row label,
+/// never by positional cell taps.
 final class GiftVaultGoldenPathTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
 
     @MainActor
-    private func hittable(_ element: XCUIElement, _ what: String, timeout: TimeInterval = 10) {
-        XCTAssertTrue(element.waitForHittable(timeout: timeout), "\(what) never became hittable")
+    private func hittable(_ app: XCUIApplication, _ element: XCUIElement,
+                          _ what: String, timeout: TimeInterval = 10) {
+        if !element.waitForHittable(timeout: timeout) {
+            print("DX(hittable) FAILED for \(what)")
+            print("DX(tree)\n\(app.debugDescription)")
+        }
+        XCTAssertTrue(element.isHittable, "\(what) never became hittable")
     }
 
     @MainActor
@@ -40,22 +42,22 @@ final class GiftVaultGoldenPathTests: XCTestCase {
             ).firstMatch.waitForExistence(timeout: 10),
             "fixture vault did not seed"
         )
-        hittable(app.buttons["people.add"], "people.add toolbar button")
+        hittable(app, app.buttons["people.add"], "people.add toolbar button")
         app.buttons["people.add"].tap()
-        hittable(app.buttons["person.save"], "person sheet")
+        hittable(app, app.buttons["person.save"], "person sheet")
         app.textFields["person.name"].tap()
         app.textFields["person.name"].typeText("Nova")
         app.buttons["person.save"].tap()
         let novaRow = app.staticTexts.matching(
             NSPredicate(format: "label == %@", "Nova")
         ).firstMatch
-        hittable(novaRow, "Nova people row")
+        hittable(app, novaRow, "Nova people row")
 
         // 2. Add an idea with a price hint for Nova.
         novaRow.tap()
-        hittable(app.buttons["ideas.add"], "ideas.add toolbar button")
+        hittable(app, app.buttons["ideas.add"], "ideas.add toolbar button")
         app.buttons["ideas.add"].tap()
-        hittable(app.buttons["idea.save"], "idea sheet")
+        hittable(app, app.buttons["idea.save"], "idea sheet")
         app.textFields["idea.note"].tap()
         app.textFields["idea.note"].typeText("Trail daypack")
         app.textFields["idea.price"].tap()
@@ -65,14 +67,14 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         let daypackRow = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Trail daypack")
         ).firstMatch
-        hittable(daypackRow, "Trail daypack idea row")
+        hittable(app, daypackRow, "Trail daypack idea row")
 
         // 3. Create occasion "Nova quiz", budget 50, attach Nova.
-        hittable(app.tabBars.buttons["Occasions"], "Occasions tab")
+        hittable(app, app.tabBars.buttons["Occasions"], "Occasions tab")
         app.tabBars.buttons["Occasions"].tap()
-        hittable(app.buttons["occasions.add"], "occasions.add toolbar button")
+        hittable(app, app.buttons["occasions.add"], "occasions.add toolbar button")
         app.buttons["occasions.add"].tap()
-        hittable(app.buttons["occasion.save"], "occasion sheet")
+        hittable(app, app.buttons["occasion.save"], "occasion sheet")
         app.textFields["occasion.name"].tap()
         app.textFields["occasion.name"].typeText("Nova quiz")
         app.textFields["occasion.budget"].tap()
@@ -80,15 +82,16 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         let novaToggle = app.switches.matching(
             NSPredicate(format: "label CONTAINS %@", "Nova")
         ).firstMatch
-        hittable(novaToggle, "Nova attach toggle")
+        hittable(app, novaToggle, "Nova attach toggle")
         novaToggle.tap()
+        print("DX(toggle) nova switch value after tap = \(String(describing: novaToggle.value))")
         app.buttons["occasion.save"].tap()
 
         // 4. Open the new occasion's board by its row label.
         let quizRow = app.staticTexts.matching(
             NSPredicate(format: "label CONTAINS %@", "Nova quiz")
         ).firstMatch
-        hittable(quizRow, "Nova quiz occasion row")
+        hittable(app, quizRow, "Nova quiz occasion row")
         quizRow.tap()
 
         // 5. Choose the trail daypack idea (repeat-check + budget state
@@ -96,12 +99,12 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         let chooseButton = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Choose idea")
         ).firstMatch
-        hittable(chooseButton, "board choose button")
+        hittable(app, chooseButton, "board choose button")
         chooseButton.tap()
         let daypackPick = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Trail daypack")
         ).firstMatch
-        hittable(daypackPick, "chooser daypack row")
+        hittable(app, daypackPick, "chooser daypack row")
         XCTAssertTrue(
             app.buttons.matching(
                 NSPredicate(format: "label CONTAINS %@", "Within budget")
@@ -116,20 +119,20 @@ final class GiftVaultGoldenPathTests: XCTestCase {
             let advance = app.buttons.matching(
                 NSPredicate(format: "label CONTAINS %@", step)
             ).firstMatch
-            hittable(advance, "advance button \(step)")
+            hittable(app, advance, "advance button \(step)")
             advance.tap()
             let confirm = app.buttons["Confirm"]
-            hittable(confirm, "confirm button for \(step)")
+            hittable(app, confirm, "confirm button for \(step)")
             confirm.tap()
         }
         // Terminal state: the seam offers no further control.
         let givenLabel = app.staticTexts.matching(
             NSPredicate(format: "label CONTAINS %@", "Gift given")
         ).firstMatch
-        hittable(givenLabel, "Gift given terminal marker")
+        hittable(app, givenLabel, "Gift given terminal marker")
 
         // 6. The given transition wrote the implied ledger row.
-        hittable(app.tabBars.buttons["Ledger"], "Ledger tab")
+        hittable(app, app.tabBars.buttons["Ledger"], "Ledger tab")
         app.tabBars.buttons["Ledger"].tap()
         XCTAssertTrue(
             app.staticTexts.matching(
