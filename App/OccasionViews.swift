@@ -208,6 +208,7 @@ struct OccasionBoardView: View {
 // MARK: - Slot row
 
 struct BoardSlotRow: View {
+    @EnvironmentObject private var model: GiftVaultAppModel
     let entry: GiftVaultAppModel.BoardSlot
     let onChoose: () -> Void
     @State private var advanceConfirmation: OccasionStatus?

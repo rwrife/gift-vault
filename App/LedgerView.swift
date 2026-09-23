@@ -44,7 +44,7 @@ private struct LedgerRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: entry.direction == .given ? "gift" : "gift.fill")
-                .foregroundStyle(entry.direction == .given ? .tint : .green)
+                .foregroundStyle(entry.direction == .given ? Color.accentColor : Color.green)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(entry.direction.displayName) \(personName)")
