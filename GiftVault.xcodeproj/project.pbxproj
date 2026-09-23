@@ -9,6 +9,7 @@
 		A10000000000000000000101 /* GiftVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000201 /* GiftVaultApp.swift */; };
 		A10000000000000000000103 /* GiftVaultLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000203 /* GiftVaultLaunchTests.swift */; };
 		A10000000000000000000104 /* GiftVaultKit in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000801 /* GiftVaultKit */; };
+		A10000000000000000000111 /* GiftVaultStoreKit in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000802 /* GiftVaultStoreKit */; };
 		A10000000000000000000105 /* HomeTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000206 /* HomeTabView.swift */; };
 		A10000000000000000000106 /* PeopleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000207 /* PeopleView.swift */; };
 		A10000000000000000000107 /* IdeasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000208 /* IdeasView.swift */; };
@@ -44,7 +45,7 @@
 		A10000000000000000000401 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
-			files = (A10000000000000000000104 /* GiftVaultKit in Frameworks */,);
+			files = (A10000000000000000000104 /* GiftVaultKit in Frameworks */, A10000000000000000000111 /* GiftVaultStoreKit in Frameworks */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A10000000000000000000402 /* Frameworks */ = {
@@ -110,7 +111,7 @@
 			buildRules = ();
 			dependencies = ();
 			name = GiftVault;
-			packageProductDependencies = (A10000000000000000000801 /* GiftVaultKit */,);
+			packageProductDependencies = (A10000000000000000000801 /* GiftVaultKit */, A10000000000000000000802 /* GiftVaultStoreKit */,);
 			productName = GiftVault;
 			productReference = A10000000000000000000204 /* GiftVault.app */;
 			productType = "com.apple.product-type.application";
@@ -286,6 +287,7 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		A10000000000000000000801 /* GiftVaultKit */ = {isa = XCSwiftPackageProductDependency; package = A10000000000000000000800 /* XCLocalSwiftPackageReference "Packages/GiftVaultKit" */; productName = GiftVaultKit;};
+		A10000000000000000000802 /* GiftVaultStoreKit */ = {isa = XCSwiftPackageProductDependency; package = A10000000000000000000800 /* XCLocalSwiftPackageReference "Packages/GiftVaultKit" */; productName = GiftVaultStoreKit;};
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A10000000000000000000000 /* Project object */;

@@ -23,17 +23,25 @@ struct GiftVaultApp: App {
     /// database. A store that cannot be opened falls back to an empty
     /// in-memory vault rather than crashing the launch (data-loss is
     /// visible; a crash loop is not recoverable by the user).
-    private static func makeModel() -> GiftVaultAppModel {
-        let fixedToday = CalendarDate(year: 2026, month: 9, day: 23)!
-        if CommandLine.arguments.contains("-ui-testing") {
-            if let seeded = try? GiftVaultAppModel.fixtures(today: fixedToday) {
-                return seeded
+    ///
+    /// `MainActor.assumeIsolated` is used because the model is a
+    /// `@MainActor` class while `App` initial property values are
+    /// evaluated in a nonisolated context (Swift 6 default-value
+    /// isolation); the App entry point always runs on the main thread,
+    /// which is exactly what `assumeIsolated` asserts.
+    nonisolated private static func makeModel() -> GiftVaultAppModel {
+        MainActor.assumeIsolated {
+            let fixedToday = CalendarDate(year: 2026, month: 9, day: 23)!
+            if CommandLine.arguments.contains("-ui-testing") {
+                if let seeded = try? GiftVaultAppModel.fixtures(today: fixedToday) {
+                    return seeded
+                }
             }
+            if let store = try? GiftVaultStore(url: vaultURL()) {
+                return GiftVaultAppModel(store: store, today: AppClock.today)
+            }
+            return GiftVaultAppModel(store: try! .inMemory(), today: AppClock.today)
         }
-        if let store = try? GiftVaultStore(url: vaultURL()) {
-            return GiftVaultAppModel(store: store, today: AppClock.today)
-        }
-        return GiftVaultAppModel(store: try! .inMemory(), today: AppClock.today)
     }
 
     private static func vaultURL() -> URL {

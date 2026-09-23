@@ -16,7 +16,7 @@ struct PeopleView: View {
                         "No people yet",
                         systemImage: "person.2",
                         description: Text("Add the first person to start capturing gift ideas.")
-                    }
+                    )
                 } else {
                     List {
                         ForEach(model.people) { person in
