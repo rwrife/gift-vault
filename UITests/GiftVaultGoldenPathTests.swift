@@ -3,6 +3,13 @@ import XCTest
 /// Issue #4 golden path: add person → add idea → create occasion →
 /// choose idea → mark given → ledger shows the entry. Launches against
 /// the fixture vault (`-ui-testing`), which never contains "Nova".
+///
+/// Query strategy: SwiftUI merges Button/label content into one
+/// accessibility element, so list rows are located by button-label
+/// CONTAINS or by the accessibilityIdentifier set on the control —
+/// never by child staticTexts inside a button label. Plain (non-button)
+/// texts (ledger rows, list-row texts under NavigationLinks) are safe
+/// staticTexts queries.
 final class GiftVaultGoldenPathTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -20,29 +27,43 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         XCTAssertTrue(peopleTab.waitForExistence(timeout: 10))
         peopleTab.tap()
         app.buttons["people.add"].tap()
-        XCTAssertTrue(app.sheets["sheet.person"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["person.save"].waitForExistence(timeout: 10))
         app.textFields["person.name"].tap()
         app.textFields["person.name"].typeText("Nova")
-        app.sheets["sheet.person"].buttons["person.save"].tap()
-        XCTAssertTrue(app.staticTexts["Nova"].waitForExistence(timeout: 10))
+        app.buttons["person.save"].tap()
+        XCTAssertTrue(
+            app.staticTexts.matching(
+                NSPredicate(format: "label CONTAINS %@", "Nova")
+            ).firstMatch.waitForExistence(timeout: 10)
+        )
 
         // 2. Add idea with a price hint for Nova.
-        app.staticTexts["Nova"].tap()
+        app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS %@", "Nova")
+        ).firstMatch.tap()
         XCTAssertTrue(app.otherElements["screen.ideas"].waitForExistence(timeout: 10))
         app.buttons["ideas.add"].tap()
-        XCTAssertTrue(app.sheets["sheet.idea"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["idea.save"].waitForExistence(timeout: 10))
         app.textFields["idea.note"].tap()
         app.textFields["idea.note"].typeText("Trail daypack")
         app.textFields["idea.price"].tap()
         app.textFields["idea.price"].typeText("45.00")
-        app.sheets["sheet.idea"].buttons["idea.save"].tap()
-        XCTAssertTrue(app.staticTexts["Trail daypack"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["$45.00"].waitForExistence(timeout: 10))
+        app.buttons["idea.save"].tap()
+        XCTAssertTrue(
+            app.buttons.matching(
+                NSPredicate(format: "label CONTAINS %@", "Trail daypack")
+            ).firstMatch.waitForExistence(timeout: 10)
+        )
+        XCTAssertTrue(
+            app.buttons.matching(
+                NSPredicate(format: "label CONTAINS %@", "$45.00")
+            ).firstMatch.exists
+        )
 
         // 3. Create occasion "Nova quiz" with a 50 budget, Nova attached.
         app.tabBars.buttons["Occasions"].tap()
         app.buttons["occasions.add"].tap()
-        XCTAssertTrue(app.sheets["sheet.occasion"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["occasion.save"].waitForExistence(timeout: 10))
         app.textFields["occasion.name"].tap()
         app.textFields["occasion.name"].typeText("Nova quiz")
         app.textFields["occasion.budget"].tap()
@@ -52,26 +73,38 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         ).firstMatch
         XCTAssertTrue(novaToggle.waitForExistence(timeout: 10))
         novaToggle.tap()
-        app.sheets["sheet.occasion"].buttons["occasion.save"].tap()
-        XCTAssertTrue(app.staticTexts["Nova quiz"].waitForExistence(timeout: 10))
+        app.buttons["occasion.save"].tap()
+        XCTAssertTrue(
+            app.staticTexts.matching(
+                NSPredicate(format: "label CONTAINS %@", "Nova quiz")
+            ).firstMatch.waitForExistence(timeout: 10)
+        )
 
         // 4. Open the board, choose the idea, walk the state machine.
-        app.staticTexts["Nova quiz"].tap()
+        app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS %@", "Nova quiz")
+        ).firstMatch.tap()
         XCTAssertTrue(app.otherElements["screen.board"].waitForExistence(timeout: 10))
         let chooseButton = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH %@", "board.choose")
         ).firstMatch
         XCTAssertTrue(chooseButton.waitForExistence(timeout: 10))
         chooseButton.tap()
+        // The chooser row carries the repeat-check + budget comparison
+        // in its merged button label: exactly one idea for Nova.
         let pickButton = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH %@", "choose.pick")
         ).firstMatch
         XCTAssertTrue(pickButton.waitForExistence(timeout: 10))
+        XCTAssertTrue(
+            app.buttons.matching(
+                NSPredicate(format: "label CONTAINS %@", "Within budget")
+            ).firstMatch.exists
+        )
         pickButton.tap()
 
         // idea → chosen happened via the chooser; now chosen → bought →
-        // wrapped → given. The advance button keeps the same identifier
-        // across states; tap → Confirm for each legal step.
+        // wrapped → given: tap → Confirm for each legal step.
         let advance = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH %@", "board.advance")
         ).firstMatch

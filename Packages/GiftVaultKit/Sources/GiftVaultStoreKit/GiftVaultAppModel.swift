@@ -256,7 +256,7 @@ public final class GiftVaultAppModel: ObservableObject {
     /// Repeat-check for choosing `idea` in `slot`: prior given entries
     /// for that person matching the idea's note (issue #2 rule).
     public func repeatMatches(idea: GiftIdea, in slot: BoardSlot) -> [LedgerEntry] {
-        RepeatMatcher.matches(candidateDescription: idea.note, personID: slot.personID.id, in: ledger)
+        RepeatMatcher.matches(candidateDescription: idea.note, personID: slot.person.id, in: ledger)
     }
 
     /// Step a slot forward via the seam's offered control. Choosing an
