@@ -6,13 +6,15 @@ final class GiftVaultLaunchTests: XCTestCase {
     }
 
     @MainActor
-    func testBootstrapHomeLaunches() throws {
+    func testAppLaunchesIntoWorkspace() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]
         app.launch()
 
-        XCTAssertTrue(app.otherElements["bootstrap.home"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Gift Vault"].exists)
-        XCTAssertTrue(app.staticTexts["People, ideas, occasions, and the ledger arrive in the next milestones."].exists)
+        // People tab is the default landing screen (NavigationStack
+        // identifier — the pattern proven by the bootstrap launch smoke).
+        XCTAssertTrue(app.otherElements["screen.people"].waitForExistence(timeout: 10))
+        // The fixture vault seeds five people including Ava Chen.
+        XCTAssertTrue(app.staticTexts["Ava Chen"].waitForExistence(timeout: 10))
     }
 }

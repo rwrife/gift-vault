@@ -7,9 +7,14 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000101 /* GiftVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000201 /* GiftVaultApp.swift */; };
-		A10000000000000000000102 /* BootstrapHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000202 /* BootstrapHomeView.swift */; };
 		A10000000000000000000103 /* GiftVaultLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000203 /* GiftVaultLaunchTests.swift */; };
 		A10000000000000000000104 /* GiftVaultKit in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000801 /* GiftVaultKit */; };
+		A10000000000000000000105 /* HomeTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000206 /* HomeTabView.swift */; };
+		A10000000000000000000106 /* PeopleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000207 /* PeopleView.swift */; };
+		A10000000000000000000107 /* IdeasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000208 /* IdeasView.swift */; };
+		A10000000000000000000108 /* OccasionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000209 /* OccasionViews.swift */; };
+		A10000000000000000000109 /* LedgerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000210 /* LedgerView.swift */; };
+		A10000000000000000000110 /* GiftVaultGoldenPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000211 /* GiftVaultGoldenPathTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -24,10 +29,15 @@
 
 /* Begin PBXFileReference section */
 		A10000000000000000000201 /* GiftVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GiftVaultApp.swift; sourceTree = "<group>"; };
-		A10000000000000000000202 /* BootstrapHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BootstrapHomeView.swift; sourceTree = "<group>"; };
 		A10000000000000000000203 /* GiftVaultLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GiftVaultLaunchTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000204 /* GiftVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GiftVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000205 /* GiftVaultUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GiftVaultUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000206 /* HomeTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTabView.swift; sourceTree = "<group>"; };
+		A10000000000000000000207 /* PeopleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeopleView.swift; sourceTree = "<group>"; };
+		A10000000000000000000208 /* IdeasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeasView.swift; sourceTree = "<group>"; };
+		A10000000000000000000209 /* OccasionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OccasionViews.swift; sourceTree = "<group>"; };
+		A10000000000000000000210 /* LedgerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerView.swift; sourceTree = "<group>"; };
+		A10000000000000000000211 /* GiftVaultGoldenPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GiftVaultGoldenPathTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,14 +69,21 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000201 /* GiftVaultApp.swift */,
-				A10000000000000000000202 /* BootstrapHomeView.swift */,
+				A10000000000000000000206 /* HomeTabView.swift */,
+				A10000000000000000000207 /* PeopleView.swift */,
+				A10000000000000000000208 /* IdeasView.swift */,
+				A10000000000000000000209 /* OccasionViews.swift */,
+				A10000000000000000000210 /* LedgerView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
 		};
 		A10000000000000000000502 /* UITests */ = {
 			isa = PBXGroup;
-			children = (A10000000000000000000203 /* GiftVaultLaunchTests.swift */,);
+			children = (
+				A10000000000000000000203 /* GiftVaultLaunchTests.swift */,
+				A10000000000000000000211 /* GiftVaultGoldenPathTests.swift */,
+			);
 			path = UITests;
 			sourceTree = "<group>";
 		};
@@ -157,14 +174,21 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000101 /* GiftVaultApp.swift in Sources */,
-				A10000000000000000000102 /* BootstrapHomeView.swift in Sources */,
+				A10000000000000000000105 /* HomeTabView.swift in Sources */,
+				A10000000000000000000106 /* PeopleView.swift in Sources */,
+				A10000000000000000000107 /* IdeasView.swift in Sources */,
+				A10000000000000000000108 /* OccasionViews.swift in Sources */,
+				A10000000000000000000109 /* LedgerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A10000000000000000000702 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (A10000000000000000000103 /* GiftVaultLaunchTests.swift in Sources */,);
+			files = (
+				A10000000000000000000103 /* GiftVaultLaunchTests.swift in Sources */,
+				A10000000000000000000110 /* GiftVaultGoldenPathTests.swift in Sources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
