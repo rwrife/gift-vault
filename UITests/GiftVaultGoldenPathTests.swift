@@ -22,7 +22,14 @@ final class GiftVaultGoldenPathTests: XCTestCase {
     @MainActor
     private func hittable(_ app: XCUIApplication, _ element: XCUIElement,
                           _ what: String, timeout: TimeInterval = 10) {
-        if !element.waitForHittable(timeout: timeout) {
+        // `waitForHittable(timeout:)` is private XCUITest API and does not
+        // compile against the public SDK; poll the public `isHittable`
+        // property until the deadline instead.
+        let deadline = Date().addingTimeInterval(timeout)
+        while !element.isHittable && Date() < deadline {
+            _ = element.waitForExistence(timeout: 0.25)
+        }
+        if !element.isHittable {
             print("DX(hittable) FAILED for \(what)")
             print("DX(tree)\n\(app.debugDescription)")
         }
@@ -134,17 +141,11 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         // 6. The given transition wrote the implied ledger row.
         hittable(app, app.tabBars.buttons["Ledger"], "Ledger tab")
         app.tabBars.buttons["Ledger"].tap()
-        XCTAssertTrue(
-            app.staticTexts.matching(
-                NSPredicate(format: "label CONTAINS %@", "Given Nova")
-            ).firstMatch.waitForHittable(timeout: 10),
-            "ledger has no Given Nova row"
-        )
-        XCTAssertTrue(
-            app.staticTexts.matching(
-                NSPredicate(format: "label CONTAINS %@", "Trail daypack")
-            ).firstMatch.waitForHittable(timeout: 10),
-            "ledger row lost the chosen idea description"
-        )
+        hittable(app, app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS %@", "Given Nova")
+        ).firstMatch, "Given Nova ledger row")
+        hittable(app, app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS %@", "Trail daypack")
+        ).firstMatch, "chosen idea description in ledger row")
     }
 }
