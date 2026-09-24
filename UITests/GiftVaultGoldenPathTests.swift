@@ -36,6 +36,24 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         XCTAssertTrue(element.isHittable, "\(what) never became hittable")
     }
 
+    /// CI run 35983045785: the newly-added person's attach toggle renders
+    /// at the very bottom of the occasion sheet, past the visible viewport,
+    /// so it exists but is never hittable. Scroll the sheet (up) until the
+    /// element becomes hittable, bounded, then assert.
+    @MainActor
+    private func hittableAfterScrolling(_ app: XCUIApplication, _ element: XCUIElement,
+                                        _ what: String, in scrollable: XCUIElement,
+                                        maxSwipes: Int = 6) {
+        var swipes = 0
+        while !element.isHittable && swipes < maxSwipes {
+            _ = element.waitForExistence(timeout: 2)
+            if element.isHittable { break }
+            scrollable.swipeUp()
+            swipes += 1
+        }
+        hittable(app, element, what)
+    }
+
     @MainActor
     func testGoldenPath() throws {
         let app = XCUIApplication()
@@ -89,7 +107,8 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         let novaToggle = app.switches.matching(
             NSPredicate(format: "label CONTAINS %@", "Nova")
         ).firstMatch
-        hittable(app, novaToggle, "Nova attach toggle")
+        hittableAfterScrolling(app, novaToggle, "Nova attach toggle",
+                               in: app.collectionViews["sheet.occasion"])
         novaToggle.tap()
         print("DX(toggle) nova switch value after tap = \(String(describing: novaToggle.value))")
         app.buttons["occasion.save"].tap()
