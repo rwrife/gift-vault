@@ -113,8 +113,27 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         ).firstMatch
         hittableAfterScrolling(app, novaToggle, "Nova attach toggle",
                                in: app.collectionViews["sheet.occasion"])
-        novaToggle.tap()
-        print("DX(toggle) nova switch value after tap = \(String(describing: novaToggle.value))")
+        // Run 36080808603: a synthesized tap on the merged row (center on
+        // the label text) left the value at 0 and the saved occasion had
+        // zero board slots — the binding never flipped. Tap the actual
+        // switch control nested in the row, then assert the flipped
+        // value reached the accessibility tree before saving.
+        let novaSwitch = novaToggle.switches.firstMatch
+        _ = novaSwitch.waitForExistence(timeout: 2)
+        (novaSwitch.exists ? novaSwitch : novaToggle).tap()
+        // Poll the switch value (string "1" when on) until the flipped
+        // state reaches the accessibility tree, bounded.
+        var attached = false
+        let flipDeadline = Date().addingTimeInterval(5)
+        while !attached && Date() < flipDeadline {
+            let probe = novaSwitch.exists ? novaSwitch : novaToggle
+            attached = String(describing: probe.value).contains("1")
+            if !attached { Thread.sleep(forTimeInterval: 0.25) }
+        }
+        if !attached {
+            print("DX(switch)\n\(novaToggle.debugDescription)")
+        }
+        XCTAssertTrue(attached, "Nova attach toggle never reported ON")
         app.textFields["occasion.name"].tap()
         app.textFields["occasion.name"].typeText("Nova quiz")
         app.textFields["occasion.budget"].tap()
