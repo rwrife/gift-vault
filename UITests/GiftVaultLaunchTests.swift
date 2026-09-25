@@ -6,13 +6,25 @@ final class GiftVaultLaunchTests: XCTestCase {
     }
 
     @MainActor
-    func testBootstrapHomeLaunches() throws {
+    func testAppLaunchesIntoWorkspace() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]
         app.launch()
 
-        XCTAssertTrue(app.otherElements["bootstrap.home"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Gift Vault"].exists)
-        XCTAssertTrue(app.staticTexts["People, ideas, occasions, and the ledger arrive in the next milestones."].exists)
+        // People tab is the default landing screen (NavigationStack
+        // identifier matched by identifier across element types — the
+        // List/Group container's element type is not guaranteed).
+        let peopleScreen = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@", "screen.people"))
+            .firstMatch
+        XCTAssertTrue(peopleScreen.waitForExistence(timeout: 10))
+        // The fixture vault seeds five people including Ava Chen. List
+        // rows are NavigationLinks (button elements); label children may
+        // be merged, so match the row as a button by label.
+        XCTAssertTrue(
+            app.buttons.matching(
+                NSPredicate(format: "label CONTAINS %@", "Ava Chen")
+            ).firstMatch.waitForExistence(timeout: 10)
+        )
     }
 }
