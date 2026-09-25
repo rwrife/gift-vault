@@ -71,7 +71,7 @@ The dual-screen experience is a **documented design target with a migration path
 
 - **Zero network:** the app makes no network requests; CI enforces a zero-network gate (empty allowlist).
 - **Storage:** local SQLite (GRDB) in app-private storage; ideas, occasions, and ledger entries never leave the device except via exports the user initiates.
-- **Permissions:** only Notifications (opt-in). No contacts, no camera, no location.
+- **Permissions:** only Notifications (opt-in). No contacts, no camera, no location. Permission is requested lazily — the first time the user opts an occasion into a date, never at app launch. Denying it leaves reminders off; every other feature (people, ideas, occasions, board, ledger) keeps working unchanged.
 - **Export/backup:** user-exported JSON bundle (restorable) and CSV views via the system share sheet; exports are plain files the user owns.
 - **No analytics, no tracking, no third-party SDKs.**
 

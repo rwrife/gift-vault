@@ -47,13 +47,17 @@ struct IdeasView: View {
                                     if let source = idea.sourceText, !source.isEmpty {
                                         Text(source)
                                             .font(.footnote)
-                                            .lineLimit(1)
+                                            .lineLimit(2)
                                     }
                                 }
                                 .foregroundStyle(.secondary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .frame(minHeight: 44)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel(
+                                "\(idea.note), \(idea.priceHintCents.map(MoneyFormatting.usdString) ?? "no price hint")\(idea.sourceText.map { ", source \($0)" } ?? "")"
+                            )
                         }
                         .swipeActions {
                             Button(role: .destructive) {

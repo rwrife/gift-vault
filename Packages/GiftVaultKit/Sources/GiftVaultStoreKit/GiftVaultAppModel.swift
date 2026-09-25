@@ -202,23 +202,24 @@ public final class GiftVaultAppModel: ObservableObject {
     /// budget; existing slots are untouched (the state machine owns
     /// their status). Removing a person removes their slot only while
     /// it has not recorded anything (status `idea`).
+    @discardableResult
     public func saveOccasion(
         name: String,
         date: CalendarDate?,
         budgetText: String,
         attachedPersonIDs: Set<UUID>,
         id: UUID? = nil
-    ) {
+    ) -> Occasion? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             lastError = "Occasion name cannot be empty."
-            return
+            return nil
         }
         guard let budget = MoneyParsing.parseCents(budgetText.isEmpty ? "0" : budgetText),
               (0...GiftVaultLimits.maximumBudgetMinorUnitsPerPerson).contains(budget)
         else {
             lastError = "Budget must be a non-negative amount up to \(MoneyFormatting.usdString(GiftVaultLimits.maximumBudgetMinorUnitsPerPerson))."
-            return
+            return nil
         }
         let occasion = Occasion(id: id ?? UUID(), name: trimmed, date: date)
         do {
@@ -237,8 +238,10 @@ public final class GiftVaultAppModel: ObservableObject {
             }
             lastError = nil
             reloadOccasions()
+            return occasion
         } catch {
             lastError = "Could not save occasion: \(error)"
+            return nil
         }
     }
 
