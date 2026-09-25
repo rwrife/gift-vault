@@ -100,10 +100,14 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         hittable(app, app.buttons["occasions.add"], "occasions.add toolbar button")
         app.buttons["occasions.add"].tap()
         hittable(app, app.buttons["occasion.save"], "occasion sheet")
-        app.textFields["occasion.name"].tap()
-        app.textFields["occasion.name"].typeText("Nova quiz")
-        app.textFields["occasion.budget"].tap()
-        app.textFields["occasion.budget"].typeText("50.00")
+        // Attach people BEFORE any text editing. CI run 35986475990: the
+        // decimal-pad keyboard has no return key to dismiss it, and the
+        // open keyboard (frame y=451..667) covered the Nova toggle at
+        // y=614 and consumed every swipeUp on the sheet, so the toggle
+        // existed but never became hittable. With no keyboard open the
+        // form renders/swipes normally; the toolbar Save button stays
+        // hittable with the keyboard up (proven by the person/idea
+        // sheets earlier in this test).
         let novaToggle = app.switches.matching(
             NSPredicate(format: "label CONTAINS %@", "Nova")
         ).firstMatch
@@ -111,6 +115,10 @@ final class GiftVaultGoldenPathTests: XCTestCase {
                                in: app.collectionViews["sheet.occasion"])
         novaToggle.tap()
         print("DX(toggle) nova switch value after tap = \(String(describing: novaToggle.value))")
+        app.textFields["occasion.name"].tap()
+        app.textFields["occasion.name"].typeText("Nova quiz")
+        app.textFields["occasion.budget"].tap()
+        app.textFields["occasion.budget"].typeText("50.00")
         app.buttons["occasion.save"].tap()
 
         // 4. Open the new occasion's board by its row label.
