@@ -6,6 +6,7 @@ import SwiftUI
 
 struct OccasionsView: View {
     @EnvironmentObject private var model: GiftVaultAppModel
+    let notificationScheduler: NotificationScheduler
     @State private var editorPresentation: OccasionEditorPresentation?
 
     struct OccasionEditorPresentation: Identifiable {
@@ -39,11 +40,19 @@ struct OccasionsView: View {
                                     }
                                 }
                                 .frame(minHeight: 44)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel(
+                                    occasion.date.map {
+                                        "\(occasion.name), on \($0)"
+                                    } ?? "\(occasion.name), no date"
+                                )
                             }
                         }
                         .onDelete { offsets in
-                            for index in offsets {
-                                model.deleteOccasion(id: model.occasions[index].id)
+                            let idsToDelete = offsets.map { model.occasions[$0].id }
+                            for id in idsToDelete {
+                                model.deleteOccasion(id: id)
+                                notificationScheduler.cancelReminder(occasionID: id)
                             }
                         }
                     }
@@ -66,7 +75,7 @@ struct OccasionsView: View {
                 }
             }
             .sheet(item: $editorPresentation) { presentation in
-                OccasionEditorView(editingID: presentation.id)
+                OccasionEditorView(editingID: presentation.id, notificationScheduler: notificationScheduler)
             }
             .accessibilityIdentifier("screen.occasions")
         }
@@ -80,6 +89,7 @@ struct OccasionEditorView: View {
     @Environment(\.dismiss) private var dismiss
     /// nil = create.
     let editingID: UUID?
+    let notificationScheduler: NotificationScheduler
 
     @State private var name: String = ""
     @State private var hasDate: Bool = false
@@ -99,9 +109,21 @@ struct OccasionEditorView: View {
                         .accessibilityIdentifier("occasion.name")
                     Toggle("Has a date", isOn: $hasDate)
                         .accessibilityIdentifier("occasion.hasDate")
+                        .onChange(of: hasDate) { _, newValue in
+                            // Permission is requested lazily, the first time
+                            // the user actually opts an occasion into a date
+                            // (never at app launch) — issue #5 contract.
+                            if newValue {
+                                Task { await notificationScheduler.requestAuthorizationIfNeeded() }
+                            }
+                        }
                     if hasDate {
                         DatePicker("Date", selection: $occasionDate, displayedComponents: .date)
                             .accessibilityIdentifier("occasion.date")
+                        Text("A reminder is scheduled the day before, if notifications are allowed.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("occasion.reminderNote")
                     }
                     TextField("Per-person budget (e.g. 50.00)", text: $budgetText)
                         .keyboardType(.decimalPad)
@@ -133,14 +155,28 @@ struct OccasionEditorView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
-                        model.saveOccasion(
+                        let savedDate = hasDate ? AppClock.calendarDate(from: occasionDate) : nil
+                        if let saved = model.saveOccasion(
                             name: name,
-                            date: hasDate ? AppClock.calendarDate(from: occasionDate) : nil,
+                            date: savedDate,
                             budgetText: budgetText,
                             attachedPersonIDs: attached,
                             id: editingID
-                        )
-                        if model.lastError == nil { dismiss() }
+                        ) {
+                            if let savedDate {
+                                Task {
+                                    await notificationScheduler.scheduleReminder(
+                                        occasionID: saved.id,
+                                        occasionName: saved.name,
+                                        occasionDate: savedDate,
+                                        today: model.today
+                                    )
+                                }
+                            } else {
+                                notificationScheduler.cancelReminder(occasionID: saved.id)
+                            }
+                            dismiss()
+                        }
                     }
                     .accessibilityIdentifier("occasion.save")
                 }
@@ -151,6 +187,7 @@ struct OccasionEditorView: View {
                     hasDate = editing.date != nil
                     if let date = editing.date {
                         occasionDate = AppClock.date(from: date)
+                        Task { await notificationScheduler.requestAuthorizationIfNeeded() }
                     }
                     budgetText = existingBudget(occasionID: editing.id)
                     attached = Set(((try? model.store.slots(forOccasion: editing.id)) ?? [])
@@ -187,8 +224,13 @@ struct OccasionBoardView: View {
 
     var body: some View {
         List {
-            ForEach(model.board) { entry in
-                BoardSlotRow(entry: entry) {
+            ForEach(Array(model.board.enumerated()), id: \.element.id) { index, entry in
+                BoardSlotRow(
+                    entry: entry,
+                    rowIndex: index + 1,
+                    totalRows: model.board.count,
+                    occasionName: occasion?.name ?? "Occasion"
+                ) {
                     chooser = SlotChooser(id: entry.id)
                 }
             }
@@ -210,6 +252,9 @@ struct OccasionBoardView: View {
 struct BoardSlotRow: View {
     @EnvironmentObject private var model: GiftVaultAppModel
     let entry: GiftVaultAppModel.BoardSlot
+    let rowIndex: Int
+    let totalRows: Int
+    let occasionName: String
     let onChoose: () -> Void
     @State private var advanceConfirmation: OccasionStatus?
 
@@ -218,14 +263,20 @@ struct BoardSlotRow: View {
             HStack {
                 Text(entry.person.name)
                     .font(.headline)
+                    .accessibilityLabel(
+                        "\(occasionName), row \(rowIndex) of \(totalRows), person \(entry.person.name)"
+                    )
                 Spacer()
-                Text(entry.slot.status.displayName)
-                    .font(.caption.bold())
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(statusTint.opacity(0.18)))
-                    .foregroundStyle(statusTint)
-                    .accessibilityIdentifier("board.status.\(entry.id)")
+                HStack(spacing: 4) {
+                    Image(systemName: statusIcon(entry.slot.status))
+                    Text(entry.slot.status.displayName)
+                }
+                .font(.caption.bold())
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(statusTint.opacity(0.18)))
+                .foregroundStyle(statusTint)
+                .accessibilityIdentifier("board.status.\(entry.id)")
             }
             HStack(spacing: 10) {
                 Text("Budget \(MoneyFormatting.usdString(entry.slot.budgetCents))")
@@ -290,6 +341,16 @@ struct BoardSlotRow: View {
         case .wrapped: "Mark wrapped"
         case .given: "Mark given"
         case .idea: ""
+        }
+    }
+
+    private func statusIcon(_ status: OccasionStatus) -> String {
+        switch status {
+        case .idea: "lightbulb"
+        case .chosen: "checkmark.circle"
+        case .bought: "cart"
+        case .wrapped: "shippingbox"
+        case .given: "checkmark.seal"
         }
     }
 
@@ -364,6 +425,10 @@ struct IdeaChooserView: View {
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .frame(minHeight: 44)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel(
+                                    "\(idea.note), \(idea.priceHintCents.map(MoneyFormatting.usdString) ?? "no price hint"), \(entry.slot.budgetComparison(for: idea).label)"
+                                )
                             }
                             .accessibilityIdentifier("choose.pick.\(idea.id)")
                         }

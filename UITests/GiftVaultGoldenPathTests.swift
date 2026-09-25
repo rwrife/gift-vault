@@ -194,4 +194,116 @@ final class GiftVaultGoldenPathTests: XCTestCase {
             NSPredicate(format: "label CONTAINS %@", "Trail daypack")
         ).firstMatch, "chosen idea description in ledger row")
     }
+
+    /// Issue #5: Dynamic Type — at the largest accessibility size the key
+    /// controls of each tab remain reachable (no clipped/off-screen
+    /// essentials), which is the layout-level half of the accessibility
+    /// pass. Content-size category is injected via the standard simulator
+    /// user-default launch argument.
+    @MainActor
+    func testLargeDynamicTypeKeepsKeyControlsReachable() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-ui-testing-ax-max",
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        app.launch()
+
+        let avaRow = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Ava Chen")
+        ).firstMatch
+        hittableAfterScrolling(app, avaRow, "Ava Chen people row at AX size",
+                               in: app.collectionViews.firstMatch)
+
+        hittable(app, app.buttons["people.add"], "people.add at AX size")
+
+        let occasionsTab = app.tabBars.buttons["Occasions"]
+        hittable(app, occasionsTab, "Occasions tab at AX size")
+        occasionsTab.tap()
+        hittable(app, app.buttons["occasions.add"], "occasions.add at AX size")
+
+        let ledgerTab = app.tabBars.buttons["Ledger"]
+        hittable(app, ledgerTab, "Ledger tab at AX size")
+        ledgerTab.tap()
+        let screen = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@", "screen.ledger"))
+            .firstMatch
+        XCTAssertTrue(screen.waitForExistence(timeout: 10), "ledger screen missing at AX size")
+    }
+
+    /// Issue #5 acceptance: with notifications denied, occasion dates (and
+    /// their reminders) degrade gracefully — the reminder affordance is
+    /// still shown and saving a dated occasion still works. The app uses a
+    /// fake denied permission center under `-ui-testing-notifications-denied`
+    /// so no system alert interferes with the journey.
+    @MainActor
+    func testNotificationDeniedPathKeepsAppUsable() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing", "-ui-testing-notifications-denied"]
+        app.launch()
+
+        let occasionsTab = app.tabBars.buttons["Occasions"]
+        XCTAssertTrue(occasionsTab.waitForExistence(timeout: 10))
+        occasionsTab.tap()
+        hittable(app, app.buttons["occasions.add"], "occasions.add")
+        app.buttons["occasions.add"].tap()
+        hittable(app, app.buttons["occasion.save"], "occasion sheet")
+
+        // Attach an existing person BEFORE any text editing (keyboard
+        // hygiene proven by the golden path), then use the date toggle —
+        // the first "occasion-date use", where permission is requested
+        // lazily and here comes back denied.
+        let avaToggle = app.switches.matching(
+            NSPredicate(format: "label CONTAINS %@", "Ava Chen")
+        ).firstMatch
+        hittableAfterScrolling(app, avaToggle, "Ava attach toggle",
+                               in: app.collectionViews["sheet.occasion"])
+        let avaSwitch = avaToggle.switches.firstMatch
+        _ = avaSwitch.waitForExistence(timeout: 2)
+        (avaSwitch.exists ? avaSwitch : avaToggle).tap()
+        var attached = false
+        let flipDeadline = Date().addingTimeInterval(5)
+        while !attached && Date() < flipDeadline {
+            let probe = avaSwitch.exists ? avaSwitch : avaToggle
+            attached = String(describing: probe.value).contains("1")
+            if !attached { Thread.sleep(forTimeInterval: 0.25) }
+        }
+        XCTAssertTrue(attached, "Ava attach toggle never reported ON")
+
+        let hasDateToggle = app.switches.matching(
+            NSPredicate(format: "identifier == %@ OR label CONTAINS %@", "occasion.hasDate", "Has a date")
+        ).firstMatch
+        hittable(app, hasDateToggle, "occasion.hasDate")
+        let hasDateSwitch = hasDateToggle.switches.firstMatch
+        _ = hasDateSwitch.waitForExistence(timeout: 2)
+        (hasDateSwitch.exists ? hasDateSwitch : hasDateToggle).tap()
+        var hasDateEnabled = false
+        let dateFlipDeadline = Date().addingTimeInterval(5)
+        while !hasDateEnabled && Date() < dateFlipDeadline {
+            let probe = hasDateSwitch.exists ? hasDateSwitch : hasDateToggle
+            hasDateEnabled = String(describing: probe.value).contains("1")
+            if !hasDateEnabled { Thread.sleep(forTimeInterval: 0.25) }
+        }
+        XCTAssertTrue(hasDateEnabled, "Has a date toggle never reported ON")
+
+        // The reminder note appears (documentation of the disabled state),
+        // and the app keeps working despite the denied permission.
+        let reminderNote = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@", "occasion.reminderNote"))
+            .firstMatch
+        XCTAssertTrue(reminderNote.waitForExistence(timeout: 5),
+                      "reminder note missing after enabling the date")
+
+        app.textFields["occasion.name"].tap()
+        app.textFields["occasion.name"].typeText("Denied quiz")
+        app.textFields["occasion.budget"].tap()
+        app.textFields["occasion.budget"].typeText("25.00")
+        app.buttons["occasion.save"].tap()
+
+        let quizRow = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS %@", "Denied quiz")
+        ).firstMatch
+        hittable(app, quizRow, "saved dated occasion row with notifications denied")
+    }
 }

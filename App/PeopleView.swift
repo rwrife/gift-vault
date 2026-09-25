@@ -31,6 +31,10 @@ struct PeopleView: View {
                                     }
                                 }
                                 .frame(minHeight: 44)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel(
+                                    person.birthday.map { "\(person.name), birthday \($0)" } ?? person.name
+                                )
                             }
                             .swipeActions {
                                 Button(role: .destructive) {

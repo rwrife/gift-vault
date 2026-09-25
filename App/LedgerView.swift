@@ -58,7 +58,7 @@ private struct LedgerRow: View {
                         Text(entry.itemDescription)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                            .lineLimit(2)
                     }
                     if entry.occasionID != nil {
                         Text("occasion")
@@ -76,5 +76,9 @@ private struct LedgerRow: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(entry.direction.displayName) \(personName), \(entry.date), \(entry.itemDescription)\(entry.valueCents.map { ", \(MoneyFormatting.usdString($0))" } ?? "")"
+        )
     }
 }

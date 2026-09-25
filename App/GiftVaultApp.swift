@@ -1,6 +1,7 @@
 import GiftVaultKit
 import GiftVaultStoreKit
 import SwiftUI
+import UserNotifications
 
 // App composition root (issue #4). The app model lives in
 // GiftVaultStoreKit (compile-checked on Linux CI); this file only wires
@@ -10,10 +11,11 @@ import SwiftUI
 @main
 struct GiftVaultApp: App {
     @State private var model: GiftVaultAppModel = GiftVaultApp.makeModel()
+    @State private var notificationScheduler: NotificationScheduler = GiftVaultApp.makeNotificationScheduler()
 
     var body: some Scene {
         WindowGroup {
-            HomeTabView()
+            HomeTabView(notificationScheduler: notificationScheduler)
                 .environmentObject(model)
         }
     }
@@ -51,6 +53,25 @@ struct GiftVaultApp: App {
         try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory.appendingPathComponent("vault.sqlite")
     }
+
+    nonisolated private static func makeNotificationScheduler() -> NotificationScheduler {
+        MainActor.assumeIsolated {
+            if CommandLine.arguments.contains("-ui-testing-notifications-denied") {
+                return NotificationScheduler(center: DeniedNotificationCenter())
+            }
+            return NotificationScheduler()
+        }
+    }
+}
+
+/// A fake center that simulates the user denying local notification
+/// permissions, exercising the permission-denied UI flow in automated tests
+/// without system alert interference.
+struct DeniedNotificationCenter: NotificationCenterScheduling, Sendable {
+    func requestAuthorization() async throws -> Bool { false }
+    func authorizationStatus() async -> UNAuthorizationStatus { .denied }
+    func addRequest(_ request: UNNotificationRequest) async throws {}
+    func removePendingRequests(withIdentifiers identifiers: [String]) {}
 }
 
 /// The only place the app reads the wall clock. Domain facts always
