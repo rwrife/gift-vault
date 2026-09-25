@@ -271,9 +271,21 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         }
         XCTAssertTrue(attached, "Ava attach toggle never reported ON")
 
-        let hasDateToggle = app.switches["occasion.hasDate"]
+        let hasDateToggle = app.switches.matching(
+            NSPredicate(format: "identifier == %@ OR label CONTAINS %@", "occasion.hasDate", "Has a date")
+        ).firstMatch
         hittable(app, hasDateToggle, "occasion.hasDate")
-        hasDateToggle.tap()
+        let hasDateSwitch = hasDateToggle.switches.firstMatch
+        _ = hasDateSwitch.waitForExistence(timeout: 2)
+        (hasDateSwitch.exists ? hasDateSwitch : hasDateToggle).tap()
+        var hasDateEnabled = false
+        let dateFlipDeadline = Date().addingTimeInterval(5)
+        while !hasDateEnabled && Date() < dateFlipDeadline {
+            let probe = hasDateSwitch.exists ? hasDateSwitch : hasDateToggle
+            hasDateEnabled = String(describing: probe.value).contains("1")
+            if !hasDateEnabled { Thread.sleep(forTimeInterval: 0.25) }
+        }
+        XCTAssertTrue(hasDateEnabled, "Has a date toggle never reported ON")
 
         // The reminder note appears (documentation of the disabled state),
         // and the app keeps working despite the denied permission.
