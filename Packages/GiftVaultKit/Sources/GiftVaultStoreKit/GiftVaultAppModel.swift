@@ -58,18 +58,19 @@ public final class GiftVaultAppModel: ObservableObject {
         }
     }
 
-    public init(store: GiftVaultStore, today: CalendarDate) {
+    public init(store: GiftVaultStore, today: CalendarDate, appVersion: String = "0.1.0") {
         self.store = store
         self.today = today
+        self.appVersion = appVersion
         reloadAll()
     }
 
     /// In-memory model seeded with the deterministic fixtures (previews
     /// and UI-test launches).
-    public static func fixtures(today: CalendarDate) throws -> GiftVaultAppModel {
+    public static func fixtures(today: CalendarDate, appVersion: String = "0.1.0") throws -> GiftVaultAppModel {
         let store = try GiftVaultStore.inMemory()
         try GiftVaultFixtures.seed(into: store)
-        return GiftVaultAppModel(store: store, today: today)
+        return GiftVaultAppModel(store: store, today: today, appVersion: appVersion)
     }
 
     // MARK: - Loading
@@ -289,6 +290,64 @@ public final class GiftVaultAppModel: ObservableObject {
     /// surfaced by the chooser UI before this is called).
     public func chooseIdea(idea: GiftIdea, in boardSlot: BoardSlot) {
         advance(boardSlot, chosenIdeaID: idea.id)
+    }
+
+    // MARK: - Backup / export / restore (issue #6)
+
+    /// The version string written into export bundles (matches the app's
+    /// `MARKETING_VERSION`; kept here so the model is testable without
+    /// Bundle APIs on Linux).
+    public let appVersion: String
+
+    /// Render the versioned JSON bundle for the whole vault. Errors are
+    /// surfaced through `lastError` and returned as nil.
+    public func exportBundleData() -> Data? {
+        do {
+            lastError = nil
+            return try store.exportBackupBundle(appVersion: appVersion)
+        } catch {
+            lastError = "Could not export backup: \(error)"
+            return nil
+        }
+    }
+
+    public func exportIdeasCSV() -> String? {
+        csvExport { try self.store.exportIdeasCSV() }
+    }
+
+    public func exportOccasionsCSV() -> String? {
+        csvExport { try self.store.exportOccasionsCSV() }
+    }
+
+    public func exportLedgerCSV() -> String? {
+        csvExport { try self.store.exportLedgerCSV() }
+    }
+
+    /// Restore the vault from a bundle's bytes (share-sheet/file-picker
+    /// data). Validation + atomic replacement happen in the store; on any
+    /// failure the existing vault is untouched and `lastError` explains why.
+    public func restoreBundle(data: Data) -> Bool {
+        do {
+            try store.restoreBackupBundle(data)
+            lastError = nil
+            reloadAll()
+            board = []
+            ideas = []
+            return true
+        } catch {
+            lastError = "Could not restore backup: \(error)"
+            return false
+        }
+    }
+
+    private func csvExport(_ body: () throws -> String) -> String? {
+        do {
+            lastError = nil
+            return try body()
+        } catch {
+            lastError = "Could not export CSV: \(error)"
+            return nil
+        }
     }
 }
 

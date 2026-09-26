@@ -35,6 +35,8 @@ struct HomeTabView: View {
                 .tabItem { Label("Occasions", systemImage: "calendar") }
             LedgerView()
                 .tabItem { Label("Ledger", systemImage: "list.bullet.rectangle") }
+            SettingsView()
+                .tabItem { Label("Settings", systemImage: "gearshape") }
         }
         .accessibilityIdentifier("workspace.home")
         .alert(
