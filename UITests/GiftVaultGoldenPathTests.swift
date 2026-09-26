@@ -306,4 +306,37 @@ final class GiftVaultGoldenPathTests: XCTestCase {
         ).firstMatch
         hittable(app, quizRow, "saved dated occasion row with notifications denied")
     }
+
+    /// Issue #6: the Settings → Backup flow is reachable and every
+    /// export/restore affordance renders (share-sheet and file-picker
+    /// presentation themselves are system UI exercised manually; the
+    /// bundle/CSV logic is covered by the package store tests).
+    @MainActor
+    func testBackupScreenExposesExportAndRestore() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing"]
+        app.launch()
+
+        let settingsTab = app.tabBars.buttons["Settings"]
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: 10), "Settings tab missing")
+        settingsTab.tap()
+
+        let backupRow = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Backup")
+        ).firstMatch
+        XCTAssertTrue(backupRow.waitForExistence(timeout: 10), "Backup row missing")
+        backupRow.tap()
+
+        for id in [
+            "backup.exportBundle",
+            "backup.exportIdeasCSV",
+            "backup.exportOccasionsCSV",
+            "backup.exportLedgerCSV",
+            "backup.restore",
+        ] {
+            let button = app.buttons[id]
+            XCTAssertTrue(button.waitForExistence(timeout: 10), "\(id) missing")
+            XCTAssertTrue(button.isHittable, "\(id) not hittable")
+        }
+    }
 }

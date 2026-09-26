@@ -16,6 +16,7 @@
 		A10000000000000000000108 /* OccasionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000209 /* OccasionViews.swift */; };
 		A10000000000000000000109 /* LedgerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000210 /* LedgerView.swift */; };
 		A10000000000000000000110 /* GiftVaultGoldenPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000211 /* GiftVaultGoldenPathTests.swift */; };
+		A10000000000000000000112 /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000212 /* BackupView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -39,6 +40,7 @@
 		A10000000000000000000209 /* OccasionViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OccasionViews.swift; sourceTree = "<group>"; };
 		A10000000000000000000210 /* LedgerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerView.swift; sourceTree = "<group>"; };
 		A10000000000000000000211 /* GiftVaultGoldenPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GiftVaultGoldenPathTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000212 /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,6 +77,7 @@
 				A10000000000000000000208 /* IdeasView.swift */,
 				A10000000000000000000209 /* OccasionViews.swift */,
 				A10000000000000000000210 /* LedgerView.swift */,
+				A10000000000000000000212 /* BackupView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -180,6 +183,7 @@
 				A10000000000000000000107 /* IdeasView.swift in Sources */,
 				A10000000000000000000108 /* OccasionViews.swift in Sources */,
 				A10000000000000000000109 /* LedgerView.swift in Sources */,
+				A10000000000000000000112 /* BackupView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
