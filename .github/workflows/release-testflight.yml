@@ -1,0 +1,229 @@
+name: Release TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      marketing_version:
+        description: "Semantic MARKETING_VERSION (for example 0.2.0)"
+        required: true
+        type: string
+      current_project_version:
+        description: "Integer CURRENT_PROJECT_VERSION build number"
+        required: true
+        type: string
+      release_notes:
+        description: "Optional TestFlight What's New text. Leave empty to use the repository template."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-testflight-${{ github.ref }}-${{ inputs.current_project_version }}
+  cancel-in-progress: false
+
+jobs:
+  linux-gates:
+    name: Linux gates (GiftVaultKit + zero-network)
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.2-noble
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Mark workspace safe for git in container
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install SQLite dev headers (GRDB on Linux)
+        run: apt-get update -qq && apt-get install -y -qq libsqlite3-dev >/dev/null
+
+      - name: Run package tests
+        run: swift test --package-path Packages/GiftVaultKit
+
+      - name: Zero-network gate
+        run: bash Scripts/check_zero_network.sh
+
+  ios-gates:
+    name: iOS gates (pinned toolchain + app build/tests)
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      TARGET_SHA: ${{ github.sha }}
+    steps:
+      - name: Check out exact commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run pinned simulator validation
+        timeout-minutes: 38
+        run: Scripts/ci.sh "$TARGET_SHA"
+
+      - name: Upload iOS gate artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-gates-ios-${{ env.TARGET_SHA }}
+          path: build/ci-artifacts
+          if-no-files-found: warn
+          retention-days: 14
+
+  upload-testflight:
+    name: Archive and upload to TestFlight
+    runs-on: macos-15
+    needs: [linux-gates, ios-gates]
+    timeout-minutes: 75
+    env:
+      MARKETING_VERSION: ${{ inputs.marketing_version }}
+      CURRENT_PROJECT_VERSION: ${{ inputs.current_project_version }}
+      RELEASE_NOTES_INPUT: ${{ inputs.release_notes }}
+      BUNDLE_ID: com.infinityball.giftvault
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validate release inputs
+        run: |
+          set -euo pipefail
+          if ! [[ "$MARKETING_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "marketing_version must be semantic version X.Y.Z; got: $MARKETING_VERSION" >&2
+            exit 1
+          fi
+          if ! [[ "$CURRENT_PROJECT_VERSION" =~ ^[0-9]+$ ]]; then
+            echo "current_project_version must be an integer; got: $CURRENT_PROJECT_VERSION" >&2
+            exit 1
+          fi
+
+      - name: Select exact pinned Xcode
+        run: |
+          set -euo pipefail
+          DEVELOPER_DIR="$(python3 Scripts/select_xcode.py --toolchain toolchain.json)"
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Materialize App Store Connect key (ephemeral)
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_TEAM_ID: ${{ secrets.ASC_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          : "${ASC_KEY_ID:?Missing ASC_KEY_ID secret}"
+          : "${ASC_ISSUER_ID:?Missing ASC_ISSUER_ID secret}"
+          : "${ASC_KEY_P8:?Missing ASC_KEY_P8 secret}"
+          : "${ASC_TEAM_ID:?Missing ASC_TEAM_ID secret}"
+
+          ASC_KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_KEY_P8" > "$ASC_KEY_PATH"
+          chmod 600 "$ASC_KEY_PATH"
+
+          {
+            echo "ASC_KEY_PATH=$ASC_KEY_PATH"
+            echo "ASC_KEY_ID=$ASC_KEY_ID"
+            echo "ASC_ISSUER_ID=$ASC_ISSUER_ID"
+            echo "ASC_TEAM_ID=$ASC_TEAM_ID"
+          } >> "$GITHUB_ENV"
+
+      - name: Resolve release notes text
+        run: |
+          set -euo pipefail
+          notes_file="$RUNNER_TEMP/release-notes.txt"
+          if [[ -n "${RELEASE_NOTES_INPUT//[[:space:]]/}" ]]; then
+            printf '%s' "$RELEASE_NOTES_INPUT" > "$notes_file"
+          else
+            sed \
+              -e "s/{{MARKETING_VERSION}}/$MARKETING_VERSION/g" \
+              -e "s/{{CURRENT_PROJECT_VERSION}}/$CURRENT_PROJECT_VERSION/g" \
+              .github/release-notes/testflight-template.md \
+              > "$notes_file"
+          fi
+          echo "RELEASE_NOTES_FILE=$notes_file" >> "$GITHUB_ENV"
+
+      - name: Archive signed app for iOS
+        run: |
+          set -euo pipefail
+          archive_path="$RUNNER_TEMP/GiftVault.xcarchive"
+          xcodebuild archive \
+            -project GiftVault.xcodeproj \
+            -scheme GiftVault \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$archive_path" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            MARKETING_VERSION="$MARKETING_VERSION" \
+            CURRENT_PROJECT_VERSION="$CURRENT_PROJECT_VERSION"
+          echo "ARCHIVE_PATH=$archive_path" >> "$GITHUB_ENV"
+
+      - name: Verify archived bundle identifier and iPhone-only UIDeviceFamily
+        run: |
+          set -euo pipefail
+          python3 Scripts/verify_archive_plist.py \
+            "$ARCHIVE_PATH/Products/Applications/GiftVault.app/Info.plist" \
+            "$BUNDLE_ID"
+
+      - name: Export and upload archive to App Store Connect
+        run: |
+          set -euo pipefail
+          export_plist="$RUNNER_TEMP/ExportOptions.plist"
+          python3 Scripts/write_export_options.py "$export_plist" "$ASC_TEAM_ID"
+
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportPath "$RUNNER_TEMP/exported" \
+            -exportOptionsPlist "$export_plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Wait for processing and publish release notes
+        run: |
+          set -euo pipefail
+          evidence_json="$RUNNER_TEMP/testflight-evidence.json"
+          python3 Scripts/app_store_connect.py \
+            --bundle-id "$BUNDLE_ID" \
+            --marketing-version "$MARKETING_VERSION" \
+            --current-project-version "$CURRENT_PROJECT_VERSION" \
+            --key-id "$ASC_KEY_ID" \
+            --issuer-id "$ASC_ISSUER_ID" \
+            --key-path "$ASC_KEY_PATH" \
+            --notes-file "$RELEASE_NOTES_FILE" \
+            --evidence-out "$evidence_json"
+
+          python3 Scripts/write_summary_from_evidence.py "$evidence_json" "$GITHUB_STEP_SUMMARY"
+          echo "EVIDENCE_JSON=$evidence_json" >> "$GITHUB_ENV"
+
+      - name: Upload release evidence artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: testflight-release-evidence-${{ github.run_id }}
+          path: |
+            ${{ env.EVIDENCE_JSON }}
+            ${{ env.RELEASE_NOTES_FILE }}
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Cleanup App Store Connect key material
+        if: always()
+        run: |
+          set -euo pipefail
+          if [[ -n "${ASC_KEY_PATH:-}" && -f "$ASC_KEY_PATH" ]]; then
+            rm -f "$ASC_KEY_PATH"
+          fi
+          rm -f "$RUNNER_TEMP/ExportOptions.plist"
