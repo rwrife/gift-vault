@@ -14,6 +14,37 @@ import urllib.request
 from pathlib import Path
 
 
+def _der_ecdsa_to_raw(der_signature: bytes, coordinate_size: int = 32) -> bytes:
+    """Convert a DER-encoded ECDSA signature (as produced by openssl) to the
+    raw R||S format required by JWS ES256 (RFC 7518 section 3.4)."""
+
+    if not der_signature or der_signature[0] != 0x30:
+        raise ValueError("Not a DER SEQUENCE")
+    offset = 2
+    if der_signature[1] & 0x80:
+        length_bytes = der_signature[1] & 0x7F
+        offset = 2 + length_bytes
+
+    def read_integer(data: bytes, index: int) -> tuple[bytes, int]:
+        if index >= len(data) or data[index] != 0x02:
+            raise ValueError("Expected INTEGER tag")
+        length = data[index + 1]
+        start = index + 2
+        value = data[start:start + length]
+        return value, start + length
+
+    r_bytes, offset = read_integer(der_signature, offset)
+    s_bytes, offset = read_integer(der_signature, offset)
+
+    def to_fixed_width(value: bytes) -> bytes:
+        value = value.lstrip(b"\x00")
+        if len(value) > coordinate_size:
+            raise ValueError("Integer too large for coordinate size")
+        return value.rjust(coordinate_size, b"\x00")
+
+    return to_fixed_width(r_bytes) + to_fixed_width(s_bytes)
+
+
 def generate_jwt(key_id: str, issuer_id: str, key_path: Path) -> str:
     now = int(time.time())
     header = {"alg": "ES256", "kid": key_id, "typ": "JWT"}
@@ -28,7 +59,9 @@ def generate_jwt(key_id: str, issuer_id: str, key_path: Path) -> str:
         return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
     unsigned = f"{b64url(json.dumps(header).encode())}.{b64url(json.dumps(payload).encode())}"
-    # Sign using openssl
+    # openssl produces a DER-encoded ECDSA signature; JWS ES256 requires the
+    # raw 64-byte R||S concatenation (RFC 7518 section 3.4). Apple rejects DER
+    # signatures with HTTP 401 Unauthorized.
     proc = subprocess.run(
         ["openssl", "dgst", "-binary", "-sha256", "-sign", str(key_path)],
         input=unsigned.encode("utf-8"),
@@ -36,7 +69,8 @@ def generate_jwt(key_id: str, issuer_id: str, key_path: Path) -> str:
         stderr=subprocess.PIPE,
         check=True,
     )
-    signature = b64url(proc.stdout)
+    raw_signature = _der_ecdsa_to_raw(proc.stdout)
+    signature = b64url(raw_signature)
     return f"{unsigned}.{signature}"
 
 
